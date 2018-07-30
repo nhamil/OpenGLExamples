@@ -24,3 +24,6 @@ ivs-test-right.txt
 *.opensdf
 *.vcxproj*
 
+# VS Code 
+.vscode/ 
+

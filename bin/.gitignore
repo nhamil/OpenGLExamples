@@ -28,6 +28,8 @@
 /tracker-demo
 /tracker-stats
 /zfight
+/distjudge
+/multiscreen-slideshow 
 
 # Binaries created in vrpn folder
 /fake-server
