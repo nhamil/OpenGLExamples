@@ -3,9 +3,10 @@
  * the file named "LICENSE" for a full copy of the license.
  */
 
-/** @file Demonstrates drawing a 3D triangle.
+/** 
+ * Displays images over multiple monitors 
  *
- * @author Scott Kuhl
+ * @author Nicholas Hamilton 
  */
 
 #include "libkuhl.h"
@@ -16,16 +17,23 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-#define IMAGE_DEPTH (4) 
+#define IMAGE_DEPTH (0) 
 
 #define DEFAULT_SCREEN_WIDTH (1920) 
 #define DEFAULT_SCREEN_HEIGHT (1080) 
 
+/**
+ * 2D Vector
+ */ 
 typedef struct _vec2
 {
 	float x, y; 
 } Vec2;
 
+/**
+ * Contains all properties required to display 
+ * an image in the slideshow 
+ */
 typedef struct _imageinfo
 {
 	kuhl_geometry quad; 
@@ -38,6 +46,9 @@ typedef struct _imageinfo
 	struct _imageinfo *next; 
 } ImageInfo;
 
+/**
+ * Used for parsing slideshow config file
+ */ 
 typedef struct _parser 
 {
 	char *text; 
@@ -47,16 +58,25 @@ typedef struct _parser
 	int linePos; 
 } Parser;
 
-static GLuint textureShader = 0; 
-static ImageInfo *imageInfo = NULL; 
-static double time = 0.0; 
+static GLuint textureShader = 0; // used to draw images
+static ImageInfo *imageInfo = NULL; // first image in list 
+static double time = 0.0; // time in the slideshow 
 
+/**
+ * Constructs a Vec2
+ * Does not require a destructor
+ */ 
 void InitVec2(Vec2 *self, float x, float y) 
 {
 	self->x = x; 
 	self->y = y; 
 }
 
+/** 
+ * Sets the kuhl_geometry of an ImageInfo 
+ * to be a quad with a texture given by the 
+ * file name
+ */ 
 static void ImageInfoGenerateQuad(ImageInfo *self, const char *filename) 
 {
 	kuhl_geometry_new(&self->quad, textureShader, 4, GL_TRIANGLES); 
@@ -93,6 +113,14 @@ static void ImageInfoGenerateQuad(ImageInfo *self, const char *filename)
 	kuhl_errorcheck();
 }
 
+/**
+ * Creates an ImageInfo for the image at [filename], 
+ * at position of [x, y] of size [w, h]. 
+ * 
+ * All other properties are given default values. 
+ * 
+ * Use DestroyImageInfo() to destruct ImageInfo. 
+ */ 
 void CreateImageInfo(ImageInfo *self, const char *filename, float x, float y, float w, float h) 
 {
 	ImageInfoGenerateQuad(self, filename); 
@@ -107,6 +135,12 @@ void CreateImageInfo(ImageInfo *self, const char *filename, float x, float y, fl
 	InitVec2(&self->size, w, h); 
 }
 
+/**
+ * Destroys an ImageInfo (does not destroy ImageInfo.next). 
+ * This manually deletes any textures associated with its
+ * kuhl_geometry, so any potentially large images do not stay 
+ * in memory. 
+ */ 
 void DestroyImageInfo(ImageInfo *self) 
 {
 	for (unsigned i = 0; i < self->quad.texture_count; i++) 
@@ -122,6 +156,12 @@ void DestroyImageInfo(ImageInfo *self)
 	kuhl_geometry_delete(&self->quad); 
 }
 
+/**
+ * Allocates and constructs an ImageInfo for the image at 
+ * [filename] at position [x, y] of size [w, h]. 
+ * 
+ * Use FreeImageInfo() to free struct. 
+ */ 
 ImageInfo *NewImageInfo(const char *filename, float x, float y, float w, float h) 
 {
 	ImageInfo *self = malloc(sizeof (ImageInfo)); 
@@ -129,12 +169,24 @@ ImageInfo *NewImageInfo(const char *filename, float x, float y, float w, float h
 	return self; 
 }
 
+/** 
+ * Destructs and deallocates ImageInfo. 
+ */ 
 void FreeImageInfo(ImageInfo *self) 
 {
 	DestroyImageInfo(self); 
 	free(self); 
 }
 
+/**
+ * Sets up OpenGL to draw ImageInfos. 
+ * 
+ * Call this before calling ImageInfoDraw(). 
+ * Call ImageInfoPostDraw() after drawing is finished. 
+ * 
+ * @param ortho fraction of the entire display that this monitor
+ *              takes up (left, right, top, bottom) 
+ */ 
 void ImageInfoPreDraw(float ortho[4])  
 {
 	glUseProgram(textureShader);  
@@ -143,6 +195,8 @@ void ImageInfoPreDraw(float ortho[4])
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
 
 	float view[16];  
+	// create view matrix based on monitor position compared 
+	// to the entire display (this is needed for multiple monitors) 
 	mat4f_ortho_new(view, 
 		ortho[0] * -1, 
 		ortho[1] * 1, 
@@ -154,31 +208,48 @@ void ImageInfoPreDraw(float ortho[4])
 	glUniform1f(kuhl_get_uniform("u_Depth"), 0.0f); 
 }
 
+/**
+ * Used to set common OpenGL settings after drawing images. 
+ */ 
 void ImageInfoPostDraw(void) 
 {
 	glEnable(GL_DEPTH_TEST); 
 }
 
+/**
+ * Draws the image associated with an ImageInfo. 
+ * 
+ * If the image should be drawn, the transparency of the image 
+ * will be determined based on the current time and the fadeIn 
+ * and fadeOut actors. 
+ */ 
 void ImageInfoDraw(ImageInfo *self) 
 {
 	float alpha = 0.0f; 
 
+    // only determine alpha if the image should be displayed in 
+    // the first place 
 	if (time >= self->startTime) 
 	{
 		float curDuration = time - self->startTime; 
 
 		if (curDuration < self->duration) 
 		{
+            // image should be displayed, figure out alpha 
+
 			if (self->fadeIn > 0 && curDuration < self->fadeIn) 
 			{
+                // fading in 
 				alpha = curDuration / self->fadeIn; 
 			}
 			else if (self->fadeOut > 0 && self->duration - curDuration < self->fadeOut) 
 			{
+                // fading out 
 				alpha = (self->duration - curDuration) / self->fadeOut; 
 			}
 			else 
 			{
+                // neither, opaque 
 				alpha = 1.0f; 
 			}
 		}
@@ -189,6 +260,7 @@ void ImageInfoDraw(ImageInfo *self)
 		glUniform1f(kuhl_get_uniform("u_Alpha"), alpha); 
 
 		float model[16], tmp[16], tmp2[16]; 
+        // model matrix has to account for view matrix being [-1, 1] instead of [0, 1] 
 		mat4f_translate_new(tmp, self->position.x * 2 - 1, self->position.y * 2 - 1, 0.0f); 
 		mat4f_scale_new(tmp2, self->size.x * 2, self->size.y * 2, 1.0f); 
 		mat4f_mult_mat4f_new(model, tmp, tmp2); 
@@ -211,20 +283,6 @@ void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
 			glfwSetWindowShouldClose(window, GL_TRUE);
 			break;
 	}
-}
-
-static inline void PrintFloatArray(unsigned count, float *arr) 
-{
-	char buf[1024]; 
-	char *p = buf; 
-	p += sprintf(p, "["); 
-	for (unsigned i = 0; i < count; i++) 
-	{
-		if (i != 0) p += sprintf(p, ", "); 
-		p += sprintf(p, "%f", arr[i]); 
-	}
-	p += sprintf(p, "]\n"); 
-	msg(MSG_INFO, "%s", buf); 
 }
 
 /** Draws the 3D scene. */
@@ -260,10 +318,11 @@ void display()
 		glDisable(GL_SCISSOR_TEST);
 		kuhl_errorcheck();
 
+        // use monitors frustum and the master frustum to determine 
+        // fraction of display that this monitor takes up 
 		float frustum[6], master[6], viewCoords[4]; 
 		viewmat_get_frustum(frustum, viewportID); 
 		viewmat_get_master_frustum(master); 
-
 		for (unsigned i = 0; i < 4; i++) viewCoords[i] = frustum[i] / master[i]; 
 
 		ImageInfoPreDraw(viewCoords); 
@@ -283,7 +342,6 @@ void display()
 	/* Check for errors. If there are errors, consider adding more
 	 * calls to kuhl_errorcheck() in your code. */
 	kuhl_errorcheck();
-
 }
 
 int IsAlpha(char c) 
@@ -302,6 +360,16 @@ int StringStartsWith(const char *str, const char *with)
 	return strlen(str) < withLen ? 0 : strncmp(str, with, withLen) == 0; 
 }
 
+/**
+ * Returns true if [str] starts with [with] and 
+ * the next character cannot be part of the same token. 
+ * 
+ * Examples: 
+ * ("string", "string")   -> true 
+ * ("strings", "string")  -> false 
+ * ("string{}", "string") -> true 
+ * ("string ", "string")  -> true 
+ */ 
 int StringStartsWithWord(const char *str, const char *with) 
 {
 	size_t strLen = strlen(str); 
@@ -316,6 +384,12 @@ int StringStartsWithWord(const char *str, const char *with)
 	return !IsNumber(after) && !IsAlpha(after); 
 }
 
+/**
+ * Construct parser
+ * 
+ * @param text the source code to parse. This memory should 
+ *             be owned by the Parser. 
+ */ 
 void CreateParser(Parser *self, char *text) 
 {
 	self->text = text; 
@@ -325,21 +399,33 @@ void CreateParser(Parser *self, char *text)
 	self->linePos = 1; 
 }
 
+/**
+ * Destructs Parser
+ */ 
 void DestroyParser(Parser *self) 
 {
 	free(self->text); 
 }
 
+/**
+ * Is the parser at the end of the file? 
+ */ 
 int ParserAtEnd(Parser *self) 
 {
 	return self->pos >= self->end; 
 }
 
+/**
+ * Gets next character, but does not advance
+ */ 
 char ParserPeek(Parser *self) 
 {
 	return (self->pos) < self->end ? *self->pos : 0; 
 }
 
+/**
+ * Gets the next character and advances
+ */ 
 char ParserNext(Parser *self) 
 {
 	char c = ParserPeek(self); 
@@ -352,6 +438,7 @@ char ParserNext(Parser *self)
 
 	self->pos++; 
 
+    // update line position for debugging 
 	if (c == '\n') 
 	{
 		self->line++; 
@@ -365,18 +452,24 @@ char ParserNext(Parser *self)
 	return c; 
 }
 
+/**
+ * Advance [count] characters
+ */ 
 void ParserNextN(Parser *self, unsigned count) 
 {
 	for (unsigned i = 0; i < count; i++) ParserNext(self); 
 }
 
-void ParserSkipWhitespace(Parser *self, int newlines) 
+/**
+ * Skip whitespace in the file, optionally including newlines
+ */ 
+void ParserSkipWhitespace(Parser *self, int skipNewline) 
 {
 	while (!ParserAtEnd(self)) 
 	{
 		char c = ParserPeek(self); 
 
-		if (c == ' ' || (newlines && c == '\n')) 
+		if (c == ' ' || (skipNewline && c == '\n')) 
 		{
 			ParserNext(self); 
 			continue; 
@@ -388,10 +481,17 @@ void ParserSkipWhitespace(Parser *self, int newlines)
 	}
 }
 
+/**
+ * Guarantees [expect] is the next token, or crashes 
+ * the program. 
+ * 
+ * Advances past the token if it is there. 
+ */ 
 void ParserExpect(Parser *self, const char *expect) 
 {
 	if (!StringStartsWith(self->pos, expect)) 
 	{
+        // newline would be printed weird, needs a special case 
 		if (strcmp(expect, "\n") == 0) 
 		{
 			msg(MSG_FATAL, "At %d:%d, expected newline\n", self->line, self->linePos); 
@@ -407,6 +507,13 @@ void ParserExpect(Parser *self, const char *expect)
 	ParserNextN(self, strlen(expect)); 
 }
 
+/**
+ * Checks if [check] is the next token, and if it is
+ * advances past it. 
+ * 
+ * If it is not, then position in the file remains 
+ * unchanged. 
+ */ 
 int ParserCheck(Parser *self, const char *check) 
 {
 	if (StringStartsWithWord(self->pos, check)) 
@@ -420,11 +527,27 @@ int ParserCheck(Parser *self, const char *check)
 	}
 }
 
+/**
+ * Reads a float at the parser's current position. 
+ * 
+ * If it fails, the program quits. 
+ * 
+ * Supports negative numbers, integer and fractional parts. 
+ */ 
 float ParserGetFloat(Parser *self) 
 {
 	float value = 0; 
 	int valid = 0; 
+    int negative = 0; 
 
+    // check if negative 
+    if (ParserPeek(self) == '-') 
+    {
+        ParserNext(self); 
+        negative = 1; 
+    }
+
+    // integer part 
 	while (!ParserAtEnd(self) && IsNumber(ParserPeek(self))) 
 	{
 		valid = 1; 
@@ -439,6 +562,7 @@ float ParserGetFloat(Parser *self)
 		return value; 
 	}
 
+    // check if there is a fractional part 
 	if (ParserPeek(self) == '.') 
 	{
 		ParserNext(self); 
@@ -451,9 +575,17 @@ float ParserGetFloat(Parser *self)
 		}
 	}
 
+    // apply negativeness after entire number has been read 
+    if (negative) value *= -1; 
+
 	return value; 
 }
 
+/** 
+ * Reads a 2-vector at the parser's current position. 
+ * 
+ * Expects: [float], [float]
+ */ 
 Vec2 ParserGetVec2(Parser *self) 
 {
 	Vec2 v; 
@@ -467,6 +599,9 @@ Vec2 ParserGetVec2(Parser *self)
 	return v; 
 }
 
+/**
+ * Reads text between quotes
+ */ 
 void ParserGetString(Parser *self, char *out) 
 {
 	ParserExpect(self, "\""); 
@@ -495,6 +630,12 @@ void ParserGetString(Parser *self, char *out)
 	exit(1); 
 }
 
+/**
+ * Helper function to get a float while finishing 
+ * the rest of the line of text
+ * 
+ * Expects: = [float]\n
+ */ 
 float ParserAssignFloat(Parser *self) 
 {
 	float f;  
@@ -509,6 +650,12 @@ float ParserAssignFloat(Parser *self)
 	return f; 
 }
 
+/**
+ * Helper function to get a 2-vector while finishing 
+ * the rest of the line of text
+ * 
+ * Expects: = [float], [float]\n
+ */ 
 Vec2 ParserAssignVec2(Parser *self) 
 {
 	Vec2 v; 
@@ -523,6 +670,42 @@ Vec2 ParserAssignVec2(Parser *self)
 	return v; 
 }
 
+/**
+ * Parses configuration file and returns the first ImageInfo 
+ * if there are any. 
+ * 
+ * This file is expected to first define a screen size. Since 
+ * this uses floats, its perfectly valid to use pixels or monitors
+ * as the units. 
+ * 
+ * Examples: 
+ * screen = 1920, 1080 
+ * screen = 3, 1 
+ * 
+ * After the screen has been defined, you can define images that 
+ * will be displayed in the slideshow using the following syntax: 
+ * 
+ * image "[filename]" {
+ *     position = [x], [y] 
+ *     size = [width], [height] 
+ *     start = [start time] 
+ *     duration = [duration] 
+ * }
+ * 
+ * The origin for position is in the bottom-left. All time values 
+ * are in seconds. You can optionally add the following properties
+ * to any image: 
+ * 
+ *     fadeIn = [fade in duration] 
+ *     fadeOut = [fade out duration]
+ * 
+ * Images earlier in the file will show on top of images further 
+ * down in the file. 
+ * 
+ * If there are any problems parsing the file, the program will 
+ * display an error message that includes the point in the file that
+ * caused the error, and will quit. 
+ */ 
 ImageInfo *ParserGetImages(Parser *self) 
 {
 	Vec2 screen; 
@@ -536,8 +719,11 @@ ImageInfo *ParserGetImages(Parser *self)
 
 		if (ParserCheck(self, "screen")) 
 		{
+            // set screen dimensions 
+
 			if (screenSet) 
 			{
+                // can only set screen once 
 				msg(MSG_FATAL, "At %d:%d, screen dimensions have already been set\n", self->line, self->linePos); 
 				exit(1); 
 			}
@@ -551,6 +737,7 @@ ImageInfo *ParserGetImages(Parser *self)
 		{
 			if (!screenSet) 
 			{
+                // screen must be set first 
 				msg(MSG_FATAL, "At %d:%d, screen dimensions have not been set, cannot define an image\n", self->line, self->linePos); 
 				exit(1); 
 			}
@@ -563,11 +750,15 @@ ImageInfo *ParserGetImages(Parser *self)
 
 			Vec2 pos; 
 			Vec2 size; 
-			float start; 
-			float duration; 
-			float fadeIn; 
-			float fadeOut; 
+			float start = 0; 
+			float duration = 0; 
+			float fadeIn = 0; 
+			float fadeOut = 0; 
 
+            InitVec2(&pos, 0, 0); 
+            InitVec2(&size, 0, 0); 
+
+            // get image properties 
 			while (!ParserCheck(self, "}")) 
 			{
 				ParserSkipWhitespace(self, 1); 
@@ -617,6 +808,8 @@ ImageInfo *ParserGetImages(Parser *self)
 		}
 		else 
 		{
+            // shouldn't happen if the file is correct 
+            // TODO handle this better than just moving to next character 
 			ParserNext(self); 
 		}
 	}
@@ -635,6 +828,7 @@ int main(int argc, char **argv)
 
 	const char *filename = "slideshow.txt"; 
 
+    // get the filename for the slideshow config 
 	if (argc == 1) 
 	{
 		msg(MSG_INFO, "Running slideshow from default file 'slideshow.txt'\n"); 
@@ -658,6 +852,7 @@ int main(int argc, char **argv)
 	char *slideshowConfig = kuhl_text_read(filename); 
 	Parser parser; 
 	CreateParser(&parser, slideshowConfig); 
+    // parse and get any images that will be displayed in the slideshow 
 	imageInfo = ParserGetImages(&parser); 
 	DestroyParser(&parser); 
 
