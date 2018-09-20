@@ -1,0 +1,36 @@
+screen = 6, 4 
+
+image "../images/rainbow-alpha.png" {
+    position = 0, 0 
+    size = 2, 2 
+    start = 2 
+    duration = 5 
+    fadeIn = 1 
+    fadeOut = 3 
+}
+
+image "../images/pavers.jpg" 
+{
+    position = 1, 0 
+    size = 0.5, 0.5 
+    start = 3 
+    duration = 6 
+}
+
+image "../images/blue.png" {
+    position = 1, 0
+    size = 4, 1
+    start = 1 
+    duration = 10 
+    fadeIn = 1 
+    fadeOut = 3 
+}
+
+image "../images/pavers-normalmap.jpg" {
+    position = 3, 1 
+    size = 1, 1 
+    start = 3 
+    duration = 2 
+    fadeIn = 0.2 
+    fadeOut = 0.2 
+}

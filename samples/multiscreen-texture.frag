@@ -1,6 +1,6 @@
-#version 150 
+#version 120 
 
-in vec2 v_TexCoord; 
+varying vec2 v_TexCoord; 
 
 uniform sampler2D u_Texture; 
 uniform float u_Alpha; 

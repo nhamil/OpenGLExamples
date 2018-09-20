@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-IVS_USER="$USER"
+IVS_USER="nrhamilt"
 IVS_TEMP_DIR="~$USER/opengl-examples-ivs-temp"
 
 

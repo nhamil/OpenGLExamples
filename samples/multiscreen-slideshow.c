@@ -44,7 +44,7 @@ typedef struct _imageinfo
     Vec2 position; 
     Vec2 size; 
     struct _imageinfo *next; 
-} ImageInfo;
+} FrameData;
 
 /**
  * Used for parsing slideshow config file
@@ -59,8 +59,10 @@ typedef struct _parser
 } Parser;
 
 static GLuint textureShader = 0; // used to draw images
-static ImageInfo *imageInfo = NULL; // first image in list 
-static double time = 0.0; // time in the slideshow 
+static FrameData *imageInfo = NULL; // first image in list 
+static double frameTime = 0.0; // frameTime in the slideshow 
+static double frameStart = 0.0; // start from loading images 
+static double totalDuration = 1.0; // time before loop 
 
 /**
  * Constructs a Vec2
@@ -73,11 +75,11 @@ void InitVec2(Vec2 *self, float x, float y)
 }
 
 /** 
- * Sets the kuhl_geometry of an ImageInfo 
+ * Sets the kuhl_geometry of an FrameData 
  * to be a quad with a texture given by the 
  * file name
  */ 
-static void ImageInfoGenerateQuad(ImageInfo *self, const char *filename) 
+static void FrameDataGenerateQuad(FrameData *self, const char *filename) 
 {
     kuhl_geometry_new(&self->quad, textureShader, 4, GL_TRIANGLES); 
 
@@ -114,16 +116,16 @@ static void ImageInfoGenerateQuad(ImageInfo *self, const char *filename)
 }
 
 /**
- * Creates an ImageInfo for the image at [filename], 
+ * Creates an FrameData for the image at [filename], 
  * at position of [x, y] of size [w, h]. 
  * 
  * All other properties are given default values. 
  * 
- * Use DestroyImageInfo() to destruct ImageInfo. 
+ * Use DestroyFrameData() to destruct FrameData. 
  */ 
-void CreateImageInfo(ImageInfo *self, const char *filename, float x, float y, float w, float h) 
+void CreateFrameData(FrameData *self, const char *filename, float x, float y, float w, float h) 
 {
-    ImageInfoGenerateQuad(self, filename); 
+    FrameDataGenerateQuad(self, filename); 
 
     self->startTime = 0.0f; 
     self->duration = 5.0f; 
@@ -136,12 +138,12 @@ void CreateImageInfo(ImageInfo *self, const char *filename, float x, float y, fl
 }
 
 /**
- * Destroys an ImageInfo (does not destroy ImageInfo.next). 
+ * Destroys an FrameData (does not destroy FrameData.next). 
  * This manually deletes any textures associated with its
  * kuhl_geometry, so any potentially large images do not stay 
  * in memory. 
  */ 
-void DestroyImageInfo(ImageInfo *self) 
+void DestroyFrameData(FrameData *self) 
 {
     for (unsigned i = 0; i < self->quad.texture_count; i++) 
     {
@@ -157,37 +159,37 @@ void DestroyImageInfo(ImageInfo *self)
 }
 
 /**
- * Allocates and constructs an ImageInfo for the image at 
+ * Allocates and constructs an FrameData for the image at 
  * [filename] at position [x, y] of size [w, h]. 
  * 
- * Use FreeImageInfo() to free struct. 
+ * Use FreeFrameData() to free struct. 
  */ 
-ImageInfo *NewImageInfo(const char *filename, float x, float y, float w, float h) 
+FrameData *NewFrameData(const char *filename, float x, float y, float w, float h) 
 {
-    ImageInfo *self = malloc(sizeof (ImageInfo)); 
-    CreateImageInfo(self, filename, x, y, w, h); 
+    FrameData *self = malloc(sizeof (FrameData)); 
+    CreateFrameData(self, filename, x, y, w, h); 
     return self; 
 }
 
 /** 
- * Destructs and deallocates ImageInfo. 
+ * Destructs and deallocates FrameData. 
  */ 
-void FreeImageInfo(ImageInfo *self) 
+void FreeFrameData(FrameData *self) 
 {
-    DestroyImageInfo(self); 
+    DestroyFrameData(self); 
     free(self); 
 }
 
 /**
- * Sets up OpenGL to draw ImageInfos. 
+ * Sets up OpenGL to draw FrameDatas. 
  * 
- * Call this before calling ImageInfoDraw(). 
- * Call ImageInfoPostDraw() after drawing is finished. 
+ * Call this before calling FrameDataDraw(). 
+ * Call FrameDataPostDraw() after drawing is finished. 
  * 
  * @param ortho fraction of the entire display that this monitor
  *              takes up (left, right, top, bottom) 
  */ 
-void ImageInfoPreDraw(float ortho[4])  
+void FrameDataPreDraw(float ortho[4])  
 {
     glUseProgram(textureShader);  
     glDisable(GL_DEPTH_TEST); 
@@ -198,12 +200,20 @@ void ImageInfoPreDraw(float ortho[4])
     // create view matrix based on monitor position compared 
     // to the entire display (this is needed for multiple monitors) 
     mat4f_ortho_new(view, 
-        ortho[0] * -1, 
+        ortho[0] * 1, 
         ortho[1] * 1, 
-        ortho[2] * -1, 
+        ortho[2] * 1, 
         ortho[3] * 1, 
         1, -1
     ); 
+
+    // msg(MSG_INFO, "Ortho: %f %f %f %f\n", 
+    //     ortho[0] * 1, 
+    //     ortho[1] * 1, 
+    //     ortho[2] * 1, 
+    //     ortho[3] * 1
+    // ); 
+
     glUniformMatrix4fv(kuhl_get_uniform("u_ViewMat"), 1, GL_FALSE, view); 
     glUniform1f(kuhl_get_uniform("u_Depth"), 0.0f); 
 }
@@ -211,27 +221,27 @@ void ImageInfoPreDraw(float ortho[4])
 /**
  * Used to set common OpenGL settings after drawing images. 
  */ 
-void ImageInfoPostDraw(void) 
+void FrameDataPostDraw(void) 
 {
     glEnable(GL_DEPTH_TEST); 
 }
 
 /**
- * Draws the image associated with an ImageInfo. 
+ * Draws the image associated with an FrameData. 
  * 
  * If the image should be drawn, the transparency of the image 
- * will be determined based on the current time and the fadeIn 
+ * will be determined based on the current frameTime and the fadeIn 
  * and fadeOut actors. 
  */ 
-void ImageInfoDraw(ImageInfo *self) 
+void FrameDataDraw(FrameData *self) 
 {
     float alpha = 0.0f; 
 
     // only determine alpha if the image should be displayed in 
     // the first place 
-    if (time >= self->startTime) 
+    if (frameTime >= self->startTime) 
     {
-        float curDuration = time - self->startTime; 
+        float curDuration = frameTime - self->startTime; 
 
         if (curDuration < self->duration) 
         {
@@ -288,8 +298,9 @@ void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
 /** Draws the 3D scene. */
 void display()
 {
-    time = glfwGetTime(); 
-    dgr_setget("time", &time, sizeof (double)); 
+    frameTime = glfwGetTime() - frameStart; 
+    while (frameTime > totalDuration) frameTime -= totalDuration; 
+    dgr_setget("frameTime", &frameTime, sizeof (double)); 
 
     /* Render the scene once for each viewport. Frequently one
      * viewport will fill the entire screen. However, this loop will
@@ -323,16 +334,26 @@ void display()
         float frustum[6], master[6], viewCoords[4]; 
         viewmat_get_frustum(frustum, viewportID); 
         viewmat_get_master_frustum(master); 
-        for (unsigned i = 0; i < 4; i++) viewCoords[i] = frustum[i] / master[i]; 
+        // msg(MSG_INFO, "Local: %f %f %f %f\n", frustum[0], frustum[1], frustum[2], frustum[3]); 
+        // msg(MSG_INFO, "Master: %f %f %f %f\n", master[0], master[1], master[2], master[3]); 
+        for (unsigned i = 0; i < 4; i++) 
+        {
+            viewCoords[i] = frustum[i] / master[i]; 
+        }
 
-        ImageInfoPreDraw(viewCoords); 
-        ImageInfo *cur = imageInfo; 
+        viewCoords[0] = (frustum[0] - master[0]) / (master[1] - master[0]) * 2 - 1; 
+        viewCoords[1] = (frustum[1] - master[0]) / (master[1] - master[0]) * 2 - 1; 
+        viewCoords[2] = (frustum[2] - master[2]) / (master[3] - master[2]) * 2 - 1; 
+        viewCoords[3] = (frustum[3] - master[2]) / (master[3] - master[2]) * 2 - 1; 
+
+        FrameDataPreDraw(viewCoords); 
+        FrameData *cur = imageInfo; 
         while (cur) 
         {
-            ImageInfoDraw(cur); 
+            FrameDataDraw(cur); 
             cur = cur->next; 
         }
-        ImageInfoPostDraw(); 
+        FrameDataPostDraw(); 
 
         glUseProgram(0); // stop using a GLSL program.
         viewmat_end_eye(viewportID);
@@ -645,7 +666,7 @@ float ParserAssignFloat(Parser *self)
     ParserSkipWhitespace(self, 0); 
     f = ParserGetFloat(self); 
     ParserSkipWhitespace(self, 0); 
-    ParserExpect(self, "\n"); 
+    //ParserExpect(self, "\n"); 
 
     return f; 
 }
@@ -665,13 +686,13 @@ Vec2 ParserAssignVec2(Parser *self)
     ParserSkipWhitespace(self, 0); 
     v = ParserGetVec2(self); 
     ParserSkipWhitespace(self, 0); 
-    ParserExpect(self, "\n"); 
+    //ParserExpect(self, "\n"); 
 
     return v; 
 }
 
 /**
- * Parses configuration file and returns the first ImageInfo 
+ * Parses configuration file and returns the first FrameData 
  * if there are any. 
  * 
  * This file is expected to first define a screen size. Since 
@@ -688,11 +709,11 @@ Vec2 ParserAssignVec2(Parser *self)
  * image "[filename]" {
  *     position = [x], [y] 
  *     size = [width], [height] 
- *     start = [start time] 
+ *     start = [start frameTime] 
  *     duration = [duration] 
  * }
  * 
- * The origin for position is in the bottom-left. All time values 
+ * The origin for position is in the bottom-left. All frameTime values 
  * are in seconds. You can optionally add the following properties
  * to any image: 
  * 
@@ -706,12 +727,18 @@ Vec2 ParserAssignVec2(Parser *self)
  * display an error message that includes the point in the file that
  * caused the error, and will quit. 
  */ 
-ImageInfo *ParserGetImages(Parser *self) 
+FrameData *ParserGetImages(Parser *self) 
 {
     Vec2 screen; 
     int screenSet = 0; 
 
-    ImageInfo *cur = NULL; 
+    FrameData *cur = NULL; 
+    char imageDir[4000]; 
+    char captionDir[4000]; 
+    strcpy(imageDir, ""); 
+    strcpy(captionDir, ""); 
+
+    int index = 0; 
 
     while (!ParserAtEnd(self)) 
     {
@@ -733,7 +760,133 @@ ImageInfo *ParserGetImages(Parser *self)
 
             msg(MSG_INFO, "Screen: %f, %f\n", screen.x, screen.y); 
         }
+        else if (ParserCheck(self, "imageDir")) 
+        {
+            ParserSkipWhitespace(self, 0); 
+            ParserExpect(self, "="); 
+            ParserSkipWhitespace(self, 0); 
+            ParserGetString(self, imageDir); 
+
+            msg(MSG_INFO, "Image Directory: %s\n", imageDir); 
+        }
+        else if (ParserCheck(self, "captionDir")) 
+        {
+            ParserSkipWhitespace(self, 0); 
+            ParserExpect(self, "="); 
+            ParserSkipWhitespace(self, 0); 
+            ParserGetString(self, captionDir); 
+
+            msg(MSG_INFO, "Caption Directory: %s\n", captionDir); 
+        }
         else if (ParserCheck(self, "image")) 
+        {
+            if (!screenSet) 
+            {
+                // screen must be set first 
+                msg(MSG_FATAL, "At %d:%d, screen dimensions have not been set, cannot define an image\n", self->line, self->linePos); 
+                exit(1); 
+            }
+
+            char absFile[4000]; 
+            int fileNum; 
+            Vec2 pos; 
+            Vec2 size;
+
+            ParserSkipWhitespace(self, 0); 
+            fileNum = (int) ParserGetFloat(self); 
+            ParserSkipWhitespace(self, 0); 
+            size = ParserGetVec2(self); 
+            ParserSkipWhitespace(self, 0); 
+            pos.x = (int) ParserGetFloat(self) - 1; 
+            pos.y = ParserNext(self) - 'a'; 
+
+            sprintf(absFile, "%s%d.jpg", imageDir, fileNum); 
+            msg(MSG_INFO, "Loading %s\n", absFile); 
+            FrameData *image = NewFrameData(absFile, pos.x / screen.x, pos.y / screen.y, size.x / screen.x, size.y / screen.y); 
+            image->startTime = index * 3; 
+            image->duration = 3; 
+            image->fadeIn = 0.5; 
+            image->fadeOut = 0.5; 
+
+            ParserSkipWhitespace(self, 0); 
+            pos.x = (int) ParserGetFloat(self) - 1; 
+            pos.y = ParserNext(self) - 'a'; 
+            size.x = size.y = 1; 
+
+            sprintf(absFile, "%s%d-C.jpg", captionDir, fileNum); 
+            msg(MSG_INFO, "Loading %s\n", absFile); 
+            FrameData *caption = NewFrameData(absFile, pos.x / screen.x, pos.y / screen.y, size.x / screen.x, size.y / screen.y); 
+            caption->startTime = index++ * 3; 
+            caption->duration = 3; 
+            caption->fadeIn = 0.5; 
+            caption->fadeOut = 0.5; 
+
+            if (image->startTime + image->duration > totalDuration) totalDuration = image->startTime + image->duration; 
+
+            caption->next = image; 
+            image->next = cur; 
+            cur = caption; 
+        }
+        // else if (ParserCheck(self, "image") || (++isCaption && ParserCheck(self, "caption"))) 
+        // {
+        //     if (!screenSet) 
+        //     {
+        //         // screen must be set first 
+        //         msg(MSG_FATAL, "At %d:%d, screen dimensions have not been set, cannot define an image\n", self->line, self->linePos); 
+        //         exit(1); 
+        //     }
+
+        //     const char *dir = isCaption ? captionDir : imageDir; 
+
+        //     char absFile[4096]; 
+        //     strcpy(absFile, dir); 
+
+        //     char *file = absFile + strlen(dir); 
+        //     Vec2 pos; 
+        //     Vec2 size; 
+        //     float start = 0; 
+        //     float duration = 3; 
+        //     float fadeIn = 0.5; 
+        //     float fadeOut = 0.5; 
+        //     InitVec2(&pos, 0, 0); 
+        //     InitVec2(&size, 0, 0); 
+
+        //     ParserSkipWhitespace(self, 0); 
+
+        //     ParserGetString(self, file); 
+        //     ParserSkipWhitespace(self, 1); 
+
+        //     start = duration * ParserGetFloat(self); 
+        //     ParserSkipWhitespace(self, 0); 
+
+        //     ParserExpect(self, ","); 
+        //     ParserSkipWhitespace(self, 0); 
+
+        //     pos = ParserGetVec2(self); 
+        //     ParserSkipWhitespace(self, 0); 
+
+        //     ParserExpect(self, ","); 
+        //     ParserSkipWhitespace(self, 0); 
+
+        //     size = ParserGetVec2(self); 
+        //     ParserSkipWhitespace(self, 0); 
+
+        //     ParserExpect(self, "\n"); 
+
+        //     msg(MSG_INFO, "Load image from %s, %f, (%f, %f), (%f, %f)\n", absFile, start, pos.x, pos.y, size.x, size.y); 
+
+        //     FrameData *info = NewFrameData(absFile, pos.x / screen.x, pos.y / screen.y, size.x / screen.x, size.y / screen.y); 
+        //     info->startTime = start; 
+        //     info->duration = duration; 
+        //     info->fadeIn = fadeIn; 
+        //     info->fadeOut = fadeOut; 
+
+        //     if (start + duration > totalDuration) totalDuration = start + duration; 
+
+        //     info->next = cur; 
+        //     cur = info; 
+        // }
+        else if (ParserCheck(self, "customimage")) 
         {
             if (!screenSet) 
             {
@@ -751,9 +904,9 @@ ImageInfo *ParserGetImages(Parser *self)
             Vec2 pos; 
             Vec2 size; 
             float start = 0; 
-            float duration = 0; 
-            float fadeIn = 0; 
-            float fadeOut = 0; 
+            float duration = 2; 
+            float fadeIn = 0.5; 
+            float fadeOut = 0.5; 
 
             InitVec2(&pos, 0, 0); 
             InitVec2(&size, 0, 0); 
@@ -797,11 +950,13 @@ ImageInfo *ParserGetImages(Parser *self)
             ParserSkipWhitespace(self, 0); 
             ParserExpect(self, "\n"); 
 
-            ImageInfo *info = NewImageInfo(file, pos.x / screen.x, pos.y / screen.y, size.x / screen.x, size.y / screen.y); 
+            FrameData *info = NewFrameData(file, pos.x / screen.x, pos.y / screen.y, size.x / screen.x, size.y / screen.y); 
             info->startTime = start; 
             info->duration = duration; 
             info->fadeIn = fadeIn; 
             info->fadeOut = fadeOut; 
+
+            if (start + duration > totalDuration) totalDuration = start + duration; 
 
             info->next = cur; 
             cur = info; 
@@ -855,6 +1010,8 @@ int main(int argc, char **argv)
     // parse and get any images that will be displayed in the slideshow 
     imageInfo = ParserGetImages(&parser); 
     DestroyParser(&parser); 
+
+    frameStart = glfwGetTime(); 
 
     /* Good practice: Unbind objects until we really need them. */
     glUseProgram(0);

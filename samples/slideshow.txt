@@ -1,36 +1,66 @@
-screen = 4, 2 
+screen = 6, 4 
+imageDir = "../images/slideshow-images/" 
+captionDir = "../images/slideshow-captions/" 
 
-image "../images/rainbow-alpha.png" {
-    position = 0, 0 
-    size = 2, 2 
-    start = 2 
-    duration = 5 
-    fadeIn = 1 
-    fadeOut = 3 
-}
+image 13 2,4 2a 5d
+image 23 3,4 1a 5b 
+image 27 3,4 2a 6c
+image 21 2,3 2b 5c
+image 17 2,2 3b 5c
+image 18 2,4 2a 5c
+image 15 4,4 1a 6c
+image 14 2,2 3b 5c 
+image 26 4,4 1a 6c 
+image 19 3,3 1b 5c 
+image 20 4,4 1a 6c 
+image 25 3,4 1a 5b 
+image 11 3,4 2a 6c 
+image 12 4,4 1a 6c 
+image 24 3,3 1b 5c 
+image 22 3,4 2a 6c 
+image 16 4,4 1a 6c 
+image 10 3,4 1a 5b
 
-image "../images/pavers.jpg" 
-{
-    position = 1, 0 
-    size = 0.5, 0.5 
-    start = 3 
-    duration = 6 
-}
+image 32 1,3 2b 4c 
+image 40 3,4 1a 5b 
+image 41 3,4 2a 6c 
+image 29 4,3 1b 6d 
+image 33 3,4 2a 5b 
+image 30 3,4 2a 6c 
+image 34 3,3 1b 5c 
+image 39 2,4 2a 5d 
+image 38 4,4 1a 6c 
+image 37 4,4 1a 6c 
+image 36 2,4 2a 5d 
+image 35 3,3 1b 5c 
+image 31 3,4 1a 5b 
+image 43 3,4 2a 6c
 
-image "../images/blue.png" {
-    position = -1, 0
-    size = 4, 1
-    start = 1 
-    duration = 10 
-    fadeIn = 1 
-    fadeOut = 3 
-}
+image 50 2,4 3a 6c 
+image 56 4,4 1a 6c 
+image 51 2,4 3a 6c 
+image  1 2,4 2a 5d 
+image 53 3,4 1a 5b 
+image 52 3,4 2a 6c 
+image 55 3,4 1a 5b 
+image 57 3,4 2a 6c 
+image 54 3,4 1a 5b 
 
-image "../images/pavers-normalmap.jpg" {
-    position = 3, 1 
-    size = 1, 1 
-    start = 3 
-    duration = 2 
-    fadeIn = 0.2 
-    fadeOut = 0.2 
-}
+image  6 3,4 1a 5b 
+image  4 3,4 2a 6c 
+image  3 2,4 2a 5d 
+image  7 3,4 1a 5b 
+image  9 4,4 1a 6c 
+image  5 3,4 1a 5b 
+image  8 3,4 2a 6c 
+
+image 44 3,4 2a 6c 
+image 45 2,4 3a 6c 
+image 48 4,4 1a 6c 
+image 47 4,4 1a 6c 
+image 46 2,4 3a 6c 
+
+image  2 2,4 2a 5d 
+image 28 3,4 2a 6c 
+image 49 4,4 1a 6c 
+image 99 3,4 1a 5b 
