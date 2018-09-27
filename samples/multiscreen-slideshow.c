@@ -64,6 +64,7 @@ static double lastFrameTime = 1000000; // to determine if slideshow restarted
 static double frameTime = 0.0; // frameTime in the slideshow 
 static double frameStart = 0.0; // start from loading images 
 static double totalDuration = 1.0; // time before loop 
+static int started = 0; 
 
 /**
  * Constructs a Vec2
@@ -293,25 +294,33 @@ void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
         case GLFW_KEY_ESCAPE:
             glfwSetWindowShouldClose(window, GL_TRUE);
             break;
+        case GLFW_KEY_SPACE: 
+            started = 1; 
+            frameStart = glfwGetTime(); 
+            break; 
     }
 }
 
 /** Draws the 3D scene. */
 void display()
 {
-    frameTime = glfwGetTime() - frameStart; 
-    while (frameTime > totalDuration) frameTime -= totalDuration; 
-    dgr_setget("frameTime", &frameTime, sizeof (double)); 
+    dgr_setget("started", &started, sizeof (int)); 
 
-    if (frameTime < lastFrameTime && dgr_is_master()) {
-        // play music 
-        msg(MSG_INFO, "Starting song..."); 
-        char *filename = kuhl_find_file("../sounds/song.mp4"); 
-        kuhl_play_sound(filename); 
-        free(filename); 
+    if (started) 
+    {
+        frameTime = glfwGetTime() - frameStart; 
+        while (frameTime > totalDuration) frameTime -= totalDuration; 
+        dgr_setget("frameTime", &frameTime, sizeof (double)); 
+
+        if (frameTime < lastFrameTime && dgr_is_master()) {
+            // play music 
+            msg(MSG_INFO, "Starting song..."); 
+            char *filename = kuhl_find_file("../sounds/song.mp4"); 
+            kuhl_play_sound(filename); 
+            free(filename); 
+        }
+        lastFrameTime = frameTime; 
     }
-    lastFrameTime = frameTime; 
-
     /* Render the scene once for each viewport. Frequently one
      * viewport will fill the entire screen. However, this loop will
      * run twice for HMDs (once for the left eye and once for the
@@ -356,14 +365,17 @@ void display()
         viewCoords[2] = (frustum[2] - master[2]) / (master[3] - master[2]) * 2 - 1; 
         viewCoords[3] = (frustum[3] - master[2]) / (master[3] - master[2]) * 2 - 1; 
 
-        FrameDataPreDraw(viewCoords); 
-        FrameData *cur = imageInfo; 
-        while (cur) 
+        if (started) 
         {
-            FrameDataDraw(cur); 
-            cur = cur->next; 
+            FrameDataPreDraw(viewCoords); 
+            FrameData *cur = imageInfo; 
+            while (cur) 
+            {
+                FrameDataDraw(cur); 
+                cur = cur->next; 
+            }
+            FrameDataPostDraw(); 
         }
-        FrameDataPostDraw(); 
 
         glUseProgram(0); // stop using a GLSL program.
         viewmat_end_eye(viewportID);
