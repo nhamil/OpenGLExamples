@@ -306,7 +306,7 @@ void display()
     if (frameTime < lastFrameTime && dgr_is_master()) {
         // play music 
         msg(MSG_INFO, "Starting song..."); 
-        char *filename = kuhl_find_file("./sounds/song.mp4"); 
+        char *filename = kuhl_find_file("../sounds/song.mp4"); 
         kuhl_play_sound(filename); 
         free(filename); 
     }
