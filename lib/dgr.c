@@ -572,6 +572,9 @@ static void dgr_send(void)
 static void dgr_receive(int timeout)
 {
 #if !defined __MINGW32__ && !defined _WIN32
+	// TODO remove this 
+	timeout = 30 * 1000; 
+
 	if(dgr_disabled)
 		return;
 

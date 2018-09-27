@@ -60,6 +60,7 @@ typedef struct _parser
 
 static GLuint textureShader = 0; // used to draw images
 static FrameData *imageInfo = NULL; // first image in list 
+static double lastFrameTime = 1000000; // to determine if slideshow restarted 
 static double frameTime = 0.0; // frameTime in the slideshow 
 static double frameStart = 0.0; // start from loading images 
 static double totalDuration = 1.0; // time before loop 
@@ -301,6 +302,15 @@ void display()
     frameTime = glfwGetTime() - frameStart; 
     while (frameTime > totalDuration) frameTime -= totalDuration; 
     dgr_setget("frameTime", &frameTime, sizeof (double)); 
+
+    if (frameTime < lastFrameTime && dgr_is_master()) {
+        // play music 
+        msg(MSG_INFO, "Starting song..."); 
+        char *filename = kuhl_find_file("./sounds/song.mp4"); 
+        kuhl_play_sound(filename); 
+        free(filename); 
+    }
+    lastFrameTime = frameTime; 
 
     /* Render the scene once for each viewport. Frequently one
      * viewport will fill the entire screen. However, this loop will
@@ -787,6 +797,8 @@ FrameData *ParserGetImages(Parser *self)
                 exit(1); 
             }
 
+            int frameDuration = 12; 
+
             char absFile[4000]; 
             int fileNum; 
             Vec2 pos; 
@@ -803,10 +815,10 @@ FrameData *ParserGetImages(Parser *self)
             sprintf(absFile, "%s%d.jpg", imageDir, fileNum); 
             msg(MSG_INFO, "Loading %s\n", absFile); 
             FrameData *image = NewFrameData(absFile, pos.x / screen.x, pos.y / screen.y, size.x / screen.x, size.y / screen.y); 
-            image->startTime = index * 3; 
-            image->duration = 3; 
-            image->fadeIn = 0.5; 
-            image->fadeOut = 0.5; 
+            image->startTime = index * (frameDuration + 1); 
+            image->duration = frameDuration; 
+            image->fadeIn = 1; 
+            image->fadeOut = 1; 
 
             ParserSkipWhitespace(self, 0); 
             pos.x = (int) ParserGetFloat(self) - 1; 
@@ -816,12 +828,14 @@ FrameData *ParserGetImages(Parser *self)
             sprintf(absFile, "%s%d-C.jpg", captionDir, fileNum); 
             msg(MSG_INFO, "Loading %s\n", absFile); 
             FrameData *caption = NewFrameData(absFile, pos.x / screen.x, pos.y / screen.y, size.x / screen.x, size.y / screen.y); 
-            caption->startTime = index++ * 3; 
-            caption->duration = 3; 
-            caption->fadeIn = 0.5; 
-            caption->fadeOut = 0.5; 
+            caption->startTime = index++ * (frameDuration + 1); 
+            caption->duration = frameDuration; 
+            caption->fadeIn = 1; 
+            caption->fadeOut = 1; 
 
             if (image->startTime + image->duration > totalDuration) totalDuration = image->startTime + image->duration; 
+
+            dgr_update(1, 0); 
 
             caption->next = image; 
             image->next = cur; 
@@ -904,9 +918,9 @@ FrameData *ParserGetImages(Parser *self)
             Vec2 pos; 
             Vec2 size; 
             float start = 0; 
-            float duration = 2; 
-            float fadeIn = 0.5; 
-            float fadeOut = 0.5; 
+            float duration = 5; 
+            float fadeIn = 1; 
+            float fadeOut = 1; 
 
             InitVec2(&pos, 0, 0); 
             InitVec2(&size, 0, 0); 

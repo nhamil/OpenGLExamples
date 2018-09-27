@@ -1,0 +1,13 @@
+screen = 6, 4 
+imageDir = "/local/kuhl-public-share/opengl/data/ww1/OA-images/" 
+captionDir = "/local/kuhl-public-share/opengl/data/ww1/OA-Captions/" 
+
+image 13 2,4 2a 5d
+image 23 3,4 1a 5b 
+image 27 3,4 2a 6c
+image 21 2,3 2b 5c
+image 17 2,2 3b 5c
+image 18 2,4 2a 5c
+image 15 4,4 1a 6c
+image 14 2,2 3b 5c 
+image 26 4,4 1a 6c 

@@ -3938,6 +3938,11 @@ void kuhl_play_sound(const char *filename)
 			/* aplay is a command-line program commonly installed on Linux machines */
 			execlp("aplay", "aplay", "--quiet", filename, NULL);
 		}
+		else if(strlen(filename) > 4 && !strcasecmp(filename + strlen(filename) - 4, ".mp4"))
+		{
+			/* aplay is a command-line program commonly installed on Linux machines */
+			execlp("ffplay", "ffplay", "-autoexit", filename, NULL);
+		}
 		else if(strlen(filename) > 4 && !strcasecmp(filename + strlen(filename) - 4, ".ogg"))
 		{
 			/* ogg123 is a command-line program commonly installed on Linux machines */

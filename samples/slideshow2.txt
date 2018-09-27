@@ -1,0 +1,11 @@
+screen = 6, 4 
+imageDir = "../images/slideshow-images/" 
+captionDir = "../images/slideshow-captions/" 
+
+image 13 2,4 2a 5d
+image 23 3,4 1a 5b 
+image 27 3,4 2a 6c
+image 21 2,3 2b 5c
+image 17 2,2 3b 5c
+image 18 2,4 2a 5c
+
