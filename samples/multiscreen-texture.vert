@@ -1,9 +1,9 @@
-#version 120 
+#version 150 
 
-attribute vec2 a_Position; 
-attribute vec2 a_TexCoord; 
+in vec2 a_Position; 
+in vec2 a_TexCoord; 
 
-varying vec2 v_TexCoord; 
+out vec2 v_TexCoord; 
 
 uniform float u_Depth; 
 uniform mat4 u_ModelMat; 
