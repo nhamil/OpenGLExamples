@@ -760,7 +760,8 @@ FrameData *ParserGetImages(Parser *self)
     strcpy(imageDir, ""); 
     strcpy(captionDir, ""); 
 
-    int index = 0; 
+    int loadStartTime = 0; 
+    int index = 1; 
 
     while (!ParserAtEnd(self)) 
     {
@@ -800,6 +801,46 @@ FrameData *ParserGetImages(Parser *self)
 
             msg(MSG_INFO, "Caption Directory: %s\n", captionDir); 
         }
+        else if (ParserCheck(self, "slide")) 
+        {
+            if (!screenSet) 
+            {
+                // screen must be set first 
+                msg(MSG_FATAL, "At %d:%d, screen dimensions have not been set, cannot define an image\n", self->line, self->linePos); 
+                exit(1); 
+            }
+
+            
+            char absFile[4000]; 
+            Vec2 pos; 
+            Vec2 size;
+            InitVec2(&pos, 1, 0); 
+            InitVec2(&size, 4, 4); 
+
+            sprintf(absFile, "%s", imageDir); 
+
+            ParserSkipWhitespace(self, 0); 
+            ParserGetString(self, absFile + strlen(absFile)); 
+            ParserSkipWhitespace(self, 0); 
+            int frameDuration = ParserGetFloat(self) + 2; // add 2 for fades 
+            int startIncr = frameDuration + 1; 
+
+            msg(MSG_INFO, "Loading %s\n", absFile); 
+            FrameData *image = NewFrameData(absFile, pos.x / screen.x, pos.y / screen.y, size.x / screen.x, size.y / screen.y); 
+            image->startTime = loadStartTime; 
+            image->duration = frameDuration; 
+            image->fadeIn = 1; 
+            image->fadeOut = 1; 
+
+            if (image->startTime + image->duration > totalDuration) totalDuration = image->startTime + image->duration; 
+
+            // try to stop dgr from exiting? 
+            dgr_update(1, 0); 
+            loadStartTime += startIncr; 
+
+            image->next = cur; 
+            cur = image; 
+        }
         else if (ParserCheck(self, "image")) 
         {
             if (!screenSet) 
@@ -810,6 +851,7 @@ FrameData *ParserGetImages(Parser *self)
             }
 
             int frameDuration = 12; 
+            int startIncr = frameDuration + 1; 
 
             char absFile[4000]; 
             int fileNum; 
@@ -824,10 +866,17 @@ FrameData *ParserGetImages(Parser *self)
             pos.x = (int) ParserGetFloat(self) - 1; 
             pos.y = ParserNext(self) - 'a'; 
 
-            sprintf(absFile, "%s%d.jpg", imageDir, fileNum); 
+            if (fileNum != 99) 
+            {
+                sprintf(absFile, "%s%d-%d.jpg", imageDir, index++, fileNum); 
+            }
+            else 
+            {
+                sprintf(absFile, "%s%d-last.jpg", imageDir, index++); 
+            }
             msg(MSG_INFO, "Loading %s\n", absFile); 
             FrameData *image = NewFrameData(absFile, pos.x / screen.x, pos.y / screen.y, size.x / screen.x, size.y / screen.y); 
-            image->startTime = index * (frameDuration + 1); 
+            image->startTime = loadStartTime; 
             image->duration = frameDuration; 
             image->fadeIn = 1; 
             image->fadeOut = 1; 
@@ -837,17 +886,26 @@ FrameData *ParserGetImages(Parser *self)
             pos.y = ParserNext(self) - 'a'; 
             size.x = size.y = 1; 
 
-            sprintf(absFile, "%s%d-C.jpg", captionDir, fileNum); 
+            if (fileNum != 99) 
+            {
+                sprintf(absFile, "%s%d-C.jpg", captionDir, fileNum); 
+            }
+            else 
+            {
+                sprintf(absFile, "%sLast-C.jpg", captionDir); 
+            }
             msg(MSG_INFO, "Loading %s\n", absFile); 
             FrameData *caption = NewFrameData(absFile, pos.x / screen.x, pos.y / screen.y, size.x / screen.x, size.y / screen.y); 
-            caption->startTime = index++ * (frameDuration + 1); 
+            caption->startTime = loadStartTime; 
             caption->duration = frameDuration; 
             caption->fadeIn = 1; 
             caption->fadeOut = 1; 
 
             if (image->startTime + image->duration > totalDuration) totalDuration = image->startTime + image->duration; 
 
+            // try to stop dgr from exiting? 
             dgr_update(1, 0); 
+            loadStartTime += startIncr; 
 
             caption->next = image; 
             image->next = cur; 

@@ -1,0 +1,65 @@
+screen = 6, 4 
+imageDir = "/local/kuhl-public-share/opengl/data/ww1/OA-images/" 
+captionDir = "/local/kuhl-public-share/opengl/data/ww1/OA-Captions/" 
+
+image 13 2,4 2a 5d
+image 23 3,4 1a 5b 
+image 27 3,4 2a 6b
+image 21 2,3 2b 5c
+image 17 2,2 3b 5c
+image 18 2,4 2a 5c
+image 15 4,4 1a 6b
+image 14 2,2 3b 5c 
+image 26 4,4 1a 6b 
+image 19 3,3 1b 5c 
+image 20 4,4 1a 6b 
+image 25 3,4 1a 5b 
+image 11 3,4 2a 6b 
+image 12 4,4 1a 6b 
+image 24 3,3 1b 5c 
+image 22 3,4 2a 6b 
+image 16 4,4 1a 6b 
+image 10 3,4 1a 5b
+
+image 32 1,3 2b 4c 
+image 40 3,4 1a 5b 
+image 41 3,4 2a 6b 
+image 29 4,3 1b 6d 
+image 33 3,4 2a 5b 
+image 30 3,4 2a 6b 
+image 34 3,3 1b 5c 
+image 39 2,4 2a 5d 
+image 38 4,4 1a 6b 
+image 37 4,4 1a 6b 
+image 36 2,4 2a 5d 
+image 35 3,3 1b 5c 
+image 31 3,4 1a 5b 
+image 43 3,4 2a 6b
+
+image 50 2,4 3a 6b 
+image 56 4,4 1a 6b 
+image 51 2,4 3a 6b 
+image  1 2,4 2a 5d 
+image 53 3,4 1a 5b 
+image 52 3,4 2a 6b 
+image 55 3,4 1a 5b 
+image 57 3,4 2a 6b 
+image 54 3,4 1a 5b 
+
+image  6 3,4 1a 5b 
+image  4 3,4 2a 6b 
+image  3 2,4 2a 5d 
+image  7 3,4 1a 5b 
+image  9 4,4 1a 6b 
+image  5 3,4 1a 5b 
+image  8 3,4 2a 6b 
+
+image 44 3,4 2a 6b 
+image 45 2,4 3a 6b 
+image 48 4,4 1a 6b 
+image 47 4,4 1a 6b 
+image 46 2,4 3a 6b 
+
+image  2 2,4 2a 5d 
+image 28 3,4 2a 6b 
+image 49 4,4 1a 6b 
